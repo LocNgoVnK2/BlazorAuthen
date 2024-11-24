@@ -1,0 +1,95 @@
+﻿@page "/vessel"
+@using BazorAppMSAuth.Share.Models;
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@rendermode @(new InteractiveWebAssemblyRenderMode(false))
+<PageTitle>Vessel Management</PageTitle>
+
+<h3>Vessel Management</h3>
+
+@if (isAdmin)
+{
+    <button class="btn btn-primary" @onclick="ShowAddModal">Add Vessel</button>
+}
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Created Date</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var vessel in vessels)
+        {
+            <tr>
+                <td>@vessel.Id</td>
+                <td>@vessel.Name</td>
+                <td>@vessel.CreatedDate.ToString("yyyy-MM-dd")</td>
+                <td>
+                    @if (isAdmin)
+                    {
+                        <button class="btn btn-warning" @onclick="() => EditVessel(vessel.Id)">Edit</button>
+                        <button class="btn btn-danger" @onclick="() => DeleteVessel(vessel.Id)">Delete</button>
+                    }
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    private List<BazorAppMSAuth.Share.Models.Vessel> vessels = new List<BazorAppMSAuth.Share.Models.Vessel>();
+    private bool isAdmin = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        
+        var userState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = userState.User;
+
+    
+        isAdmin = user.IsInRole("Admin");
+
+
+        await LoadVesselsAsync();
+    }
+
+    private async Task LoadVesselsAsync()
+    {
+
+        vessels = await Http.GetFromJsonAsync<List<BazorAppMSAuth.Share.Models.Vessel>>("api/vessel");
+    }
+
+    private void ShowAddModal()
+    {
+
+        Navigation.NavigateTo("/add-vessel");
+    }
+
+    private void EditVessel(int id)
+    {
+
+        Navigation.NavigateTo($"/edit-vessel/{id}");
+    }
+
+    private async Task DeleteVessel(int id)
+    {
+
+        var response = await Http.DeleteAsync($"api/vessel/{id}");
+
+        if (response.IsSuccessStatusCode)
+        {
+
+            await LoadVesselsAsync();
+        }
+        else
+        {
+
+            Console.WriteLine("Error deleting vessel.");
+        }
+    }
+}

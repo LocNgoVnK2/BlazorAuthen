@@ -1,0 +1,79 @@
+﻿@page "/add-vessel"
+@using BazorAppMSAuth.Share.Models
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@rendermode @(new InteractiveWebAssemblyRenderMode(false))
+<PageTitle>Add Vessel</PageTitle>
+
+<h3>Add Vessel</h3>
+
+@if (isAdmin)
+{
+    <EditForm @ref="addVesselForm" Model="@vessel" OnValidSubmit="AddVesselFunc" FormName="addVesselForm">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <div class="form-group">
+            <label for="name">Vessel Name</label>
+            <InputText id="name" class="form-control" @bind-Value="vessel.Name" />
+        </div>
+      
+        <button type="submit" class="btn btn-primary">Submit</button>
+
+        @if (!string.IsNullOrEmpty(successMessage))
+        {
+            <div class="alert alert-success mt-3">@successMessage</div>
+        }
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger mt-3">@errorMessage</div>
+        }
+    </EditForm>
+}
+else
+{
+    <p>You do not have permission to access this page.</p>
+}
+
+@code {
+    private BazorAppMSAuth.Share.Models.Vessel vessel = new BazorAppMSAuth.Share.Models.Vessel();
+    private bool isAdmin = false;
+    private string errorMessage = string.Empty;
+    private string successMessage = string.Empty;
+    private AuthenticationState userState;
+    // Declare the EditForm reference here
+    private EditForm addVesselForm;
+
+    protected override async Task OnInitializedAsync()
+    {
+        userState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = userState.User;
+        isAdmin = user.IsInRole("Admin");
+    }
+
+    private async Task AddVesselFunc()
+    {
+        if (isAdmin)
+        {
+            vessel.CreatedDate = DateTime.Today;
+
+            vessel.CreatedBy = userState.User.Identity.Name;
+            var response = await Http.PostAsJsonAsync("api/vessel", vessel);
+            if (response.IsSuccessStatusCode)
+            {
+                successMessage = "Vessel added successfully!";
+                errorMessage = string.Empty; // Clear previous error message
+                Navigation.NavigateTo("/vessel");
+            }
+            else
+            {
+           
+                var errorContent = await response.Content.ReadAsStringAsync();
+                errorMessage = $"Error adding vessel. Status Code: {response.StatusCode}, Content: {errorContent}";
+                
+            }
+        }
+    }
+}
